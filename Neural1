@@ -1,0 +1,198 @@
+package bot;
+
+//multiplies inputs and decides whether even or odd, {1,0} - even, {0,1} - odd
+
+import java.awt.Color;
+import java.awt.Graphics;
+import java.util.*;
+import javax.swing.*;
+
+public class Neural1 extends JPanel{  //change so takes input of input, layer and output sizes???
+    double errorTotal, learningRate = 0.1;
+    double[] input = new double[2], target = new double[2], hiddenNet = new double[2], hiddenOut = new double[2], outputNet = new double[2], outputOut = new double[2], biases1 = new double[2], biasChanges1 = new double[2], biases2 = new double[2], biasChanges2 = new double[2];
+    double[][] weights1 = new double[2][2], weightChanges1 = new double[2][2], weights2 = new double[2][2], weightChanges2 = new double[2][2];
+    ArrayList<double[]> inputs = new ArrayList<>();
+    Random rand = new Random();
+    ArrayList<Double> errors = new ArrayList<>();
+    
+    public Neural1(){
+        JFrame frame = new JFrame();
+        frame.add(this); 
+        frame.setSize(1366, 720);
+        frame.setVisible(true);     
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        repaint();
+        createInputData();
+        createWeightsAndBiases();
+        inputs.forEach((input) -> {
+            this.input = input;
+            createTargets();
+            forwardPropagation();
+            //printInfo();
+            findErrorTotal();
+            errors.add(errorTotal);
+            backPropagation();
+            updateWeightsAndBiases();
+        });
+        
+        repaint();
+    }
+    
+    public void paintComponent(Graphics g){
+        super.paintComponent(g); 
+        g.setColor(Color.white);
+        g.fillRect(0, 0, 1366, 720);
+        g.setColor(Color.black); 
+        for(Double d : errors){     // llambda?
+            if(errors.indexOf(d) % 100 == 0){
+                g.drawRect(errors.indexOf(d) / 100 + 1, (int) (d * 72), 1, 1);
+            }
+        }
+    }
+    
+    public void printInfo(){
+        System.out.println("inputs: " + input[0] + ", " + input[1]);
+        System.out.println("weights1[0]: " + weights1[0][0] + ", " + weights1[0][1]);
+        System.out.println("weights1[1]: " + weights1[1][0] + ", " + weights1[1][1]);
+        System.out.println("biases1: " + biases1[0] + ", " + biases1[1]);
+        System.out.println("hiddenNet: " + hiddenNet[0] + ", " + hiddenNet[1]);
+        System.out.println("hiddenOut: " + hiddenOut[0] + ", " + hiddenOut[1]);
+        
+        System.out.println("weights2[0]: " + weights2[0][0] + ", " + weights2[0][1]);
+        System.out.println("weights2[1]: " + weights2[1][0] + ", " + weights2[1][1]);
+        System.out.println("biases2: " + biases2[0] + ", " + biases2[1]);
+        System.out.println("outputNet: " + outputNet[0] + ", " + outputNet[1]);
+        System.out.println("outputOut: " + outputOut[0] + ", " + outputOut[1]);
+        System.out.println("target: " + target[0] + ", " + target[1]);
+
+    }
+    
+    public void updateWeightsAndBiases(){
+        for(int i = 0; i < weights1.length; i++){
+            for(int j = 0; j < weights1[i].length; j++){
+                weights1[i][j] -= learningRate * weightChanges1[i][j];
+                //System.out.println(weights1[i][j] + " , " + weightChanges1[i][j]);
+            }
+        }
+        for(int i = 0; i < weights2.length; i++){
+            for(int j = 0; j < weights2[i].length; j++){
+                weights2[i][j] -= learningRate * weightChanges2[i][j];
+            }
+        }
+        for(int i = 0; i < biases1.length; i++){
+            biases1[i] -= learningRate * biasChanges1[i];
+        }
+        for(int i = 0; i < biases2.length; i++){
+            biases2[i] -= learningRate * biasChanges2[i];
+        }
+    }
+    
+    public void backPropagation(){
+        for(int i = 0; i < weightChanges2.length; i++){
+            for(int j = 0; j < weightChanges2[i].length; j++){
+                weightChanges2[i][j] = getErrorOverOutputDerivative(j) * sigmoidDerivative(outputOut[j]) * hiddenOut[i];
+            }
+        }
+        for(int i = 0; i < biasChanges2.length; i++){
+            biasChanges2[i] = getErrorOverOutputDerivative(i) * sigmoidDerivative(outputOut[i]);
+        }
+        for(int i = 0; i < weightChanges1.length; i++){
+            for(int j = 0; j < weightChanges1[i].length; j++){
+                weightChanges1[i][j] = 0;
+                for(int k = 0; k < outputOut.length; k++){
+                    weightChanges1[i][j] += getErrorOverOutputDerivative(k) * sigmoidDerivative(outputOut[k]) * weights2[j][k] * input[i] * sigmoidDerivative(hiddenOut[j]);
+                }
+            }
+        }
+        for(int i = 0; i < biasChanges1.length; i++){
+            biasChanges1[i] = 0;
+            for(int j = 0; j < outputOut.length; j++){
+                biasChanges1[i] += getErrorOverOutputDerivative(j) * sigmoidDerivative(outputOut[j]) * weights2[i][j] * sigmoidDerivative(hiddenOut[i]) ;
+            }
+        }
+    }
+    
+    public double getErrorOverOutputDerivative(int index){
+        return outputOut[index] - target[index];
+    }
+    
+    public double sigmoidDerivative(double d){
+        return d * (1 - d);
+    }
+    
+    public void findErrorTotal(){
+        errorTotal = 0; 
+        for(int i = 0; i < outputOut.length; i++){
+            errorTotal += Math.pow(target[i] - outputOut[i], 2);
+        }
+        errorTotal /= 2;
+        System.out.println(errorTotal);
+    }
+    
+    public void forwardPropagation(){
+        //first layer
+        for(int i = 0; i < hiddenNet.length; i++){
+            hiddenNet[i] = biases1[i]; 
+            for(int j = 0; j < input.length; j++){
+                hiddenNet[i] += input[j] * weights1[j][i];
+            }
+            hiddenOut[i] = sigmoidFunction(hiddenNet[i]);
+        }
+        //second layer
+        for(int i = 0; i < outputNet.length; i++){
+            outputNet[i] = biases2[i]; 
+            for(int j = 0; j < hiddenOut.length; j++){
+                outputNet[i] += hiddenOut[j] * weights2[j][i];
+            }
+            outputOut[i] = sigmoidFunction(outputNet[i]);
+        }
+    }
+    
+    public Double sigmoidFunction(Double d){
+        return 1 / (1 + Math.exp(-d));
+    }
+    
+    public void createTargets(){
+        if((input[0] * input[1]) % 2 == 0){
+            target[0] = 1;
+            target[1] = 0;
+        }
+        else{
+            target[0] = 0;
+            target[1] = 1;
+        }
+    }
+    
+    public void createInputData(){
+        for(int i = 0; i < 100000; i++){
+            double[] input = new double[2];
+            for(int j = 0; j < input.length; j++){
+                input[j] = rand.nextInt(11); 
+            }
+            inputs.add(input);
+        }
+    }
+    
+    public void createWeightsAndBiases(){
+        for(int i = 0; i < weights1.length; i++){
+            for(int j = 0; j < weights1[i].length; j++){
+                weights1[i][j] = rand.nextInt(3);
+            }
+        }
+        for(int i = 0; i < weights2.length; i++){
+            for(int j = 0; j < weights2[i].length; j++){
+                weights2[i][j] = rand.nextInt(3);
+            }
+        }
+        for(int i = 0; i < biases1.length; i++){
+            biases1[i] = rand.nextInt(3);
+        }
+        for(int i = 0; i < biases2.length; i++){
+            biases2[i] = rand.nextInt(3);
+        }
+    }
+    
+    public static void main(String[] args){
+        new Neural1();
+    }
+}
