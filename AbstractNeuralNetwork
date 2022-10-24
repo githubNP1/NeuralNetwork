@@ -1,1 +1,308 @@
+package bot;
+
+import java.util.*;
+
+public abstract class AbstractNeuralNetwork {
+    double errorTotal, learningRate = 0.1; 
+    public double[] target;
+    double[][] layers, biases, biasChanges;
+    double[][][] weights, weightChanges;
+    
+    public ArrayList<double[]> inputs = new ArrayList<>();
+    Random rand = new Random();
+    ArrayList<Double> errors = new ArrayList<>();
+    
+    int n = 1;
+    
+    public void printInfo(){
+        //System.out.println("input:  " + Arrays.toString(layers[0]));
+        System.out.println("output:  " + Arrays.toString(layers[1]));
+        System.out.println("target:  " + Arrays.toString(target));
+        /*for(int i = 0; i < weightChanges.length; i++){
+            for(int j = 0; j < weightChanges[i].length; j++){
+                for(int k = 0; k < weightChanges[i][j].length; k++){
+                    System.out.println("weightChange" + i + j + k + ":  " + weightChanges[i][j][k]);
+                }
+            }
+        }
+        for(int i = 0; i < biasChanges.length; i++){
+            for(int j = 0; j < biasChanges[i].length; j++){
+                System.out.println("biasChange" + i + j + ":  " + biasChanges[i][j]);
+            }
+        }*/
+    }
+        
+    public void updateWeightsAndBiases(){
+        for(int i = 0; i < weights.length; i++){
+            for(int j = 0; j < weights[i].length; j++){
+                for(int k = 0; k < weights[i][j].length; k++){
+                    //if(weightChanges[i][j][k] > 1){weightChanges[i][j][k] = 1;}
+                    weights[i][j][k] -= learningRate * weightChanges[i][j][k];
+                }
+            }
+        }
+        for(int i = 0; i < biases.length; i++){
+            for(int j = 0; j < biases[i].length; j++){
+                //if(biases[i][j] > 1){biases[i][j] = 1;}
+                biases[i][j] -= learningRate * biasChanges[i][j];
+            }
+        }
+    }
+    
+    public double returnMultiple(int m, int[] array){
+        double d = 1;
+        d *= getErrorOverOutputDerivative(array[array.length - 1]) * sigmoidDerivative(layers[layers.length - 1][array[array.length - 1]]);
+        //System.out.println("getError " + array[array.length - 1] + " * sigmoidDer layers" + (layers.length - 1) + array[array.length - 1]);
+        for(int i = 1; i <= m; i++){  //should i start as 0 or 1???
+            d *= weights[weights.length - i][array[array.length - i - 1]][array[array.length - i]] * sigmoidDerivative(layers[layers.length - 1 - i][array[array.length - i - 1]]);
+            //System.out.println("* weights" + (weights.length - i) + array[array.length - i - 1] + array[array.length - i] + " * sigmoidDer layer" + (layers.length - 1 - i) + array[array.length - i - 1]);
+        }
+        d *= layers[layers.length - m - 2][array[0]];
+        //System.out.println("* layers " + (layers.length - m - 2) + array[0]);
+        return d;
+    }
+    
+    public double loop(int m, int o, int[] array, double d){   //m must me no lower than 1, size of array must be int o + 2.
+        for(int i = 0; i < layers[layers.length - m].length; i++){
+            array[array.length - m] = i;
+            if(n < m){
+                d = loop(m - 1, o, array, d); //d not returned - same as first d going through again
+            }
+            else{
+                d += returnMultiple(o, array);
+            }
+        }
+        return d;
+    }
+    
+    public double loop2(int m, int o, int[] array, double d){
+        for(int i = 0; i < layers[layers.length - m].length; i++){
+            array[array.length - m] = i;
+            if(n < m){
+                d = loop2(m - 1, o, array, d); 
+            }
+            else{
+                d += returnMultiple2(o, array);
+            }
+        }
+        return d;
+    }
+    
+    public double returnMultiple2(int m, int[] array){ //needs checking
+        //System.out.println("m " + m);
+        //System.out.println(array.length);
+        double d = 1;
+        d *= getErrorOverOutputDerivative(array[array.length - 1]) * sigmoidDerivative(layers[layers.length - 1][array[array.length - 1]]);
+        for(int i = 1; i <= m; i++){  //should i start as 0 or 1???
+            d *= weights[weights.length - i][array[array.length - i - 1]][array[array.length - i]] * sigmoidDerivative(layers[layers.length - 1 - i][array[array.length - i - 1]]);
+        }
+        return d;
+    }
+    
+    public void backPropagation2(){
+        for(int i = 0; i < weightChanges[1].length; i++){
+            for(int j = 0; j < weightChanges[1][i].length; j++){
+                weightChanges[1][i][j] = 0;
+                for(int k = 0; k < layers[3].length; k++){
+                    weightChanges[1][i][j] += getErrorOverOutputDerivative(k) * sigmoidDerivative(layers[3][k]) * weights[2][j][k] * layers[1][i] * sigmoidDerivative(layers[2][j]);
+                }
+            }
+        }
+        for(int i = 0; i < biasChanges[1].length; i++){
+            biasChanges[1][i] = 0;
+            for(int j = 0; j < layers[3].length; j++){
+                biasChanges[1][i] += getErrorOverOutputDerivative(j) * sigmoidDerivative(layers[3][j]) * weights[2][i][j] * sigmoidDerivative(layers[2][i]);
+            }
+        }
+        for(int i = 0; i < weightChanges[0].length; i++){
+            for(int j = 0; j < weightChanges[0][i].length; j++){
+                weightChanges[0][i][j] = 0;
+                for(int k = 0; k < layers[2].length; k++){
+                    for(int l = 0; l < layers[3].length; l++){
+                        weightChanges[0][i][j] += getErrorOverOutputDerivative(l) * sigmoidDerivative(layers[3][l]) * weights[2][k][l] * sigmoidDerivative(layers[2][k]) * weights[1][j][k] * sigmoidDerivative(layers[1][j]) * layers[0][i];
+                    }
+                }
+            }
+        }
+        for(int i = 0; i < biasChanges[0].length; i++){
+            biasChanges[0][i] = 0;
+            for(int j = 0; j < layers[2].length; j++){
+                for(int k = 0; k < layers[3].length; k++){
+                    biasChanges[0][i] += getErrorOverOutputDerivative(k) * sigmoidDerivative(layers[3][k]) * weights[2][j][k] * sigmoidDerivative(layers[2][j]) * weights[1][i][j] * sigmoidDerivative(layers[1][i]);
+                }
+            }
+        }
+    }
+    
+    public void backPropagation3(){ 
+        for(int i = 0; i < weightChanges.length - 1; i++){
+            for(int j = 0; j < weightChanges[i].length; j++){
+                for(int k = 0; k < weightChanges[i][j].length; k++){
+                    int indexDifference = weights.length - 1 - i;
+                    int[] array = new int[2 + indexDifference];
+                    array[0] = j;
+                    array[1] = k;
+                    weightChanges[i][j][k] = loop(indexDifference, indexDifference, array, weightChanges[i][j][k]);
+                }
+            }
+        }
+        for(int i = 0; i < biasChanges.length - 1; i++){
+            for(int j = 0; j < biasChanges[i].length; j++){
+                int indexDifference = biases.length - 1 - i;
+                int[] array = new int[1 + indexDifference];
+                array[0] = j;
+                //System.out.println("diff " + indexDifference);
+                biasChanges[i][j] = loop2(indexDifference, indexDifference, array, biasChanges[i][j]);
+            }
+        }
+    }
+    
+    public void backPropagation(){
+        for(int i = 0; i < weightChanges[weightChanges.length - 1].length; i++){
+            for(int j = 0; j < weightChanges[weightChanges.length - 1][i].length; j++){
+                weightChanges[weightChanges.length - 1][i][j] = getErrorOverOutputDerivative(j) * softmaxDerivative(j)/*sigmoidDerivative(layers[layers.length - 1][j])*/ * layers[layers.length - 2][i];
+            }
+        }
+        for(int i = 0; i < biasChanges[biasChanges.length - 1].length; i++){
+            biasChanges[biasChanges.length - 1][i] = getErrorOverOutputDerivative(i) * softmaxDerivative(i)/*sigmoidDerivative(layers[layers.length - 1][i])*/;
+        }
+        if(layers.length > 2){
+            for(int i = 0; i < weightChanges[weightChanges.length - 2].length; i++){
+                for(int j = 0; j < weightChanges[weightChanges.length - 2][i].length; j++){
+                    weightChanges[weightChanges.length - 2][i][j] = 0;
+                    for(int k = 0; k < layers[layers.length - 1].length; k++){
+                        weightChanges[weightChanges.length - 2][i][j] += getErrorOverOutputDerivative(k) * sigmoidDerivative(layers[layers.length - 1][k]) * weights[weights.length - 1][j][k] * layers[layers.length - 3][i] * sigmoidDerivative(layers[layers.length - 2][j]);
+                    }
+                }
+            }
+            for(int i = 0; i < biasChanges[biasChanges.length - 2].length; i++){
+                biasChanges[biasChanges.length - 2][i] = 0;
+                for(int j = 0; j < layers[layers.length - 1].length; j++){
+                    biasChanges[biasChanges.length - 2][i] += getErrorOverOutputDerivative(j) * sigmoidDerivative(layers[layers.length - 1][j]) * weights[weights.length - 1][i][j] * sigmoidDerivative(layers[layers.length - 2][i]);
+                }
+            }
+        }
+    }
+    
+    public void forwardPropagation(){
+        for(int i = 1; i < layers.length; i++){
+            for(int j = 0; j < layers[i].length; j++){
+                layers[i][j] = biases[i - 1][j];
+                for(int k = 0; k < layers[i - 1].length; k++){
+                    layers[i][j] += layers[i - 1][k] * weights[i - 1][k][j];
+                }
+                if(i == layers.length - 1){
+                    layers[i][j] = softmaxFunction(j);
+                    //System.out.println("softmax");
+                }
+                else{
+                    layers[i][j] = sigmoidFunction(layers[i][j]);
+                    //System.out.println("sigmoid");
+                }
+            }
+        }
+    }
+    
+    public void findErrorTotal(int index){
+        errorTotal = 0; 
+        for(int i = 0; i < target.length; i++){
+            //errorTotal += Math.pow(target[i] - layers[layers.length - 1][i], 2) / 2;
+            errorTotal -= target[i] * Math.log(layers[layers.length - 1][i]);
+        }
+        if(index % 100 == 0){
+            System.out.println(errorTotal);
+        }
+    }
+    
+    public double getErrorOverOutputDerivative(int index){
+        //return layers[layers.length - 1][index] - target[index];
+        return -1 * target[index] / layers[layers.length - 1][index];
+    }
+    
+    public double sigmoidDerivative(double d){
+        return d * (1 - d);
+    }
+    
+    public Double sigmoidFunction(Double d){
+        return 1 / (1 + Math.exp(-d));
+    }
+    
+    public double softmaxDerivative(int index){ //only on outputs
+        double softmaxDerivative = 0;
+        for(int i = 0; i < layers[layers.length - 1].length; i++){
+            if(i == index){
+                softmaxDerivative += softmaxFunction(i) * (1 - softmaxFunction(i));
+            }
+            else{
+                softmaxDerivative -= softmaxFunction(i) * softmaxFunction(index);
+            }
+        }
+        return softmaxDerivative;
+    }
+    
+    public double softmaxFunction(int index){  //only on outputs
+        double sumOfExponentials = 0;
+        for(int i = 0; i < layers[layers.length - 1].length; i++){
+            if(i != index){
+                sumOfExponentials += Math.exp(layers[layers.length - 1][i]);
+                //System.out.println(sumOfExponentials);
+            }
+        }
+        return Math.exp(layers[layers.length - 1][index]) / sumOfExponentials;
+    }
+    
+    public double reluFunction(double d){
+        return d > 0 ? d : 0;
+    }
+    
+    public double reluDerivative(double d){
+        return d >= 0 ? 1 : 0;
+    }
+    
+    public void createWeightsAndBiases(){
+        for(int i = 0; i < weights.length; i++){
+            for(int j = 0; j < weights[i].length; j++){
+                for(int k = 0; k < weights[i][j].length; k++){
+                    weights[i][j][k] = rand.nextDouble();
+                }
+            }
+        }
+        for(int i = 0; i < biases.length; i++){
+            for(int j = 0; j < biases[i].length; j++){
+                biases[i][j] = rand.nextDouble();
+            }
+        }
+    }
+    
+    public void setVariables(){
+        Scanner scan = new Scanner(System.in);
+        int layers = 0;
+        while(layers < 2){       
+            System.out.println("How many layers do you want?");
+            layers = scan.nextInt();
+        }
+        this.layers = new double[layers][];
+        for(int i = 0; i < this.layers.length; i++){
+            int nodes = 0;
+            while(nodes <= 0){
+                System.out.println("How many nodes in layer " + (i + 1) + " do you want?");
+                nodes = scan.nextInt();
+            }
+            this.layers[i] = new double[nodes];
+        }
+        scan.close();
+        weights = new double[layers - 1][][];
+        weightChanges = new double[layers - 1][][];
+        biases = new double[layers - 1][];
+        biasChanges = new double[layers - 1][];
+        
+        for(int i = 1; i < this.layers.length; i++){
+            weights[i - 1] = new double[this.layers[i - 1].length][this.layers[i].length];
+            weightChanges[i - 1] = new double[this.layers[i - 1].length][this.layers[i].length];
+            biases[i - 1] = new double[this.layers[i].length];
+            biasChanges[i - 1] = new double[this.layers[i].length];
+        }
+        target = new double[this.layers[this.layers.length - 1].length];
+    }
+}
 
