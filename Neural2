@@ -5,7 +5,7 @@ package bot;
 import java.util.*;
 import javax.swing.*;
 
-public class Neural2{  //change so takes input of input, layer and output sizes???
+public class Neural2{  
     double errorTotal, learningRate = 0.1;
     double[] input = new double[2], target = new double[2];
     double[][] layers = new double[4][2], biases = new double[3][2], biasChanges = new double[3][2];
