@@ -7,7 +7,7 @@ import java.awt.Graphics;
 import java.util.*;
 import javax.swing.*;
 
-public class Neural1 extends JPanel{  //change so takes input of input, layer and output sizes???
+public class Neural1 extends JPanel{  
     double errorTotal, learningRate = 0.1;
     double[] input = new double[2], target = new double[2], hiddenNet = new double[2], hiddenOut = new double[2], outputNet = new double[2], outputOut = new double[2], biases1 = new double[2], biasChanges1 = new double[2], biases2 = new double[2], biasChanges2 = new double[2];
     double[][] weights1 = new double[2][2], weightChanges1 = new double[2][2], weights2 = new double[2][2], weightChanges2 = new double[2][2];
