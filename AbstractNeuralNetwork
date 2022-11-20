@@ -16,7 +16,7 @@ public abstract class AbstractNeuralNetwork {
     
     public void printInfo(){
         //System.out.println("input:  " + Arrays.toString(layers[0]));
-        System.out.println("output:  " + Arrays.toString(layers[1]));
+        System.out.println("output:  " + Arrays.toString(layers[layers.length - 1]));
         System.out.println("target:  " + Arrays.toString(target));
         /*for(int i = 0; i < weightChanges.length; i++){
             for(int j = 0; j < weightChanges[i].length; j++){
@@ -160,11 +160,11 @@ public abstract class AbstractNeuralNetwork {
     public void backPropagation(){
         for(int i = 0; i < weightChanges[weightChanges.length - 1].length; i++){
             for(int j = 0; j < weightChanges[weightChanges.length - 1][i].length; j++){
-                weightChanges[weightChanges.length - 1][i][j] = getErrorOverOutputDerivative(j) * softmaxDerivative(j)/*sigmoidDerivative(layers[layers.length - 1][j])*/ * layers[layers.length - 2][i];
+                weightChanges[weightChanges.length - 1][i][j] = getErrorOverOutputDerivative(j) /* softmaxDerivative(j)*/ * sigmoidDerivative(layers[layers.length - 1][j]) * layers[layers.length - 2][i];
             }
         }
         for(int i = 0; i < biasChanges[biasChanges.length - 1].length; i++){
-            biasChanges[biasChanges.length - 1][i] = getErrorOverOutputDerivative(i) * softmaxDerivative(i)/*sigmoidDerivative(layers[layers.length - 1][i])*/;
+            biasChanges[biasChanges.length - 1][i] = getErrorOverOutputDerivative(i) /* softmaxDerivative(i)*/*sigmoidDerivative(layers[layers.length - 1][i]);
         }
         if(layers.length > 2){
             for(int i = 0; i < weightChanges[weightChanges.length - 2].length; i++){
@@ -191,14 +191,14 @@ public abstract class AbstractNeuralNetwork {
                 for(int k = 0; k < layers[i - 1].length; k++){
                     layers[i][j] += layers[i - 1][k] * weights[i - 1][k][j];
                 }
-                if(i == layers.length - 1){
-                    layers[i][j] = softmaxFunction(j);
+                //if(i == layers.length - 1){
+                //    layers[i][j] = softmaxFunction(j);
                     //System.out.println("softmax");
-                }
-                else{
+                //}
+                //else{
                     layers[i][j] = sigmoidFunction(layers[i][j]);
                     //System.out.println("sigmoid");
-                }
+                //}
             }
         }
     }
@@ -206,8 +206,8 @@ public abstract class AbstractNeuralNetwork {
     public void findErrorTotal(int index){
         errorTotal = 0; 
         for(int i = 0; i < target.length; i++){
-            //errorTotal += Math.pow(target[i] - layers[layers.length - 1][i], 2) / 2;
-            errorTotal -= target[i] * Math.log(layers[layers.length - 1][i]);
+            errorTotal += Math.pow(target[i] - layers[layers.length - 1][i], 2) / 2;
+            //errorTotal -= target[i] * Math.log(layers[layers.length - 1][i]);
         }
         if(index % 100 == 0){
             System.out.println(errorTotal);
@@ -215,8 +215,8 @@ public abstract class AbstractNeuralNetwork {
     }
     
     public double getErrorOverOutputDerivative(int index){
-        //return layers[layers.length - 1][index] - target[index];
-        return -1 * target[index] / layers[layers.length - 1][index];
+        return layers[layers.length - 1][index] - target[index];
+        //return -1 * target[index] / layers[layers.length - 1][index];
     }
     
     public double sigmoidDerivative(double d){
@@ -305,4 +305,3 @@ public abstract class AbstractNeuralNetwork {
         target = new double[this.layers[this.layers.length - 1].length];
     }
 }
-
