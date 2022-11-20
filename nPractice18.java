@@ -1,8 +1,8 @@
 package bot;
 
-public class nPractice18 extends AbstractNeuralNetwork{
+public class NeuralNetwork1 extends AbstractNeuralNetwork{
     //takes 2 inputs and decides which is greater
-    public nPractice18(){
+    public NeuralNetwork1(){
         super.setVariables();
         super.createWeightsAndBiases();
         createInputData();
@@ -36,6 +36,6 @@ public class nPractice18 extends AbstractNeuralNetwork{
     }
     
     public static void main(String[] args){
-        new nPractice18();
+        new NeuralNetwork1();
     }
 }
